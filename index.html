@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>N0tesBugB</title>
+<style>
+    :root{--bg:#0f1720;--panel:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--card:#0b1226}
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial}
+    body{margin:0;background:linear-gradient(180deg,#071124 0%,#071b2a 100%);color:#e6eef6;min-height:100vh;display:flex;gap:18px;padding:18px}
+    .app{display:flex;flex:1;gap:18px}
+    .panel{background:rgba(8,15,25,.6);border-radius:10px;padding:12px;min-width:260px;max-width:320px;height:calc(100vh - 36px);overflow:auto;box-shadow:0 6px 18px rgba(2,6,23,.6)}
+    header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+    header h1{font-size:16px;margin:0;color:var(--accent)}
+    .targets{display:flex;flex-direction:column;gap:8px}
+    .target-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);cursor:pointer}
+    .target-item.active{outline:2px solid rgba(6,182,212,.12);background:linear-gradient(90deg,rgba(6,182,212,.04),transparent)}
+    .muted{color:var(--muted);font-size:13px}
+    .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:6px 8px;border-radius:8px;color:var(--accent);cursor:pointer}
+    .small{padding:6px 8px;font-size:13px}
+    .main{flex:1;display:flex;flex-direction:column;gap:12px;height:calc(100vh - 36px);overflow:auto}
+    .toolbar{display:flex;gap:8px;align-items:center}
+    .save-status{font-size:13px;color:var(--muted);margin-top:4px}
+    button:focus, input:focus, textarea:focus{box-shadow:0 0 0 3px rgba(6,182,212,0.08);outline:none}
+    .card{background:rgba(255,255,255,0.02);padding:12px;border-radius:10px;overflow:auto}
+    input[type=text], textarea, select{background:transparent;border:1px solid rgba(255,255,255,0.06);color:inherit;padding:8px;border-radius:8px;outline:none;width:100%}
+    textarea{min-height:90px;resize:vertical}
+    .categories{display:flex;gap:8px;flex-wrap:wrap}
+    .cat{padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.02);cursor:pointer}
+    .cat.active{background:linear-gradient(90deg,rgba(6,182,212,.12),transparent);border:1px solid rgba(6,182,212,.12)}
+    .subcat{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.01);cursor:pointer;font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,0.02)}
+    .subcat.active{background:rgba(6,182,212,0.06);color:var(--accent);border:1px solid rgba(6,182,212,0.12)}
+    .notes-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .note{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;color:#ffffff;font-size:16px}
+    .note-title{font-weight:600}
+    .note-meta{font-size:16px;color:#ffffff;margin-top:6px}
+    .actions{display:flex;gap:6px}
+    .danger{color:#ff7b7b;border-color:rgba(255,123,123,0.12)}
+    .hidden{display:none}
+    footer{font-size:12px;color:var(--muted);padding:8px;text-align:center}
+    .confirm-box{position:fixed;right:18px;bottom:18px;background:rgba(6,6,12,0.9);padding:10px 12px;border-radius:8px;box-shadow:0 6px 20px rgba(2,6,23,.6);z-index:9999;display:flex;gap:10px;align-items:center}
+    .confirm-box .msg{color:#e6eef6;font-size:13px}
+    .confirm-box .actions{display:flex;gap:8px}
+    .confirm-box .actions button{padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:var(--accent);cursor:pointer}
+    .confirm-box .actions .cancel{color:var(--muted);border-color:rgba(255,255,255,0.03)}
+    .toast-wrap{position:fixed;right:18px;top:18px;display:flex;flex-direction:column;gap:8px;z-index:9999}
+    .toast{background:rgba(0,0,0,0.6);color:#e6eef6;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);min-width:180px;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+    .toast.error{border-color:rgba(255,100,100,0.16)}
+    .lang-menu{position:absolute;left:0;bottom:48px;background:rgba(6,6,12,0.9);padding:8px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.6);display:flex;flex-direction:column;gap:6px}
+    .lang-menu.hidden{display:none}
+    .lang-option{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:6px;color:inherit;cursor:pointer;display:flex;gap:8px;align-items:center}
+    .lang-option:hover{background:rgba(255,255,255,0.02)}
+    @media(max-width:880px){body{flex-direction:column;padding:12px} .panel{max-width:none;width:100%;height:auto} .main{height:auto}}
+</style>
+</head>
+<body>
+    <div class="lang-select-wrap" style="position:fixed;left:18px;bottom:18px;z-index:10000">
+        <div style="position:relative">
+            <button id="langBtn" title="Language" aria-haspopup="true" aria-expanded="false" style="background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px;border-radius:8px;font-size:20px;line-height:1;cursor:pointer;width:44px;height:44px">🇧🇷</button>
+            <div id="langMenu" class="lang-menu hidden" role="menu" aria-hidden="true">
+                <button class="lang-option" data-lang="pt"><span style="font-size:18px">🇧🇷</span><span></span></button>
+                <button class="lang-option" data-lang="en"><span style="font-size:18px">🇺🇸</span><span></span></button>
+            </div>
+        </div>
+    </div>
+<div class="app">
+    <aside class="panel">
+        <div style="display:flex;flex-direction:column;">
+            <div style="display:flex;justify-content:flex-start;align-items:center">
+                <h1 style="margin:0">N0tesBugB</h1>
+            </div>
+
+            <div style="margin-top:8px">
+                <input id="newTargetInput" type="text" placeholder="" aria-label="Adicionar alvo" title="Adicionar alvo" style="width:100%;min-width:220px;font-size:14px;padding:8px" />
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:8px">
+                <button id="addTargetBtn" class="btn small" title="Adicionar alvo" aria-label="Adicionar alvo"></button>
+                <button id="exportBtn" class="btn small" title="Exportar anotações" aria-label="Exportar"></button>
+                <button id="importBtn" class="btn small" title="Importar anotações" aria-label="Importar"></button>
+            </div>
+            <input id="importFileInput" type="file" accept="application/json" style="display:none" aria-hidden="true" />
+
+            <div style="height:10px"></div>
+            <div id="targetsList" class="targets"></div>
+
+            <div style="height:10px"></div>
+            <div id="storageNotice" class="muted" style="font-size:12px"></div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="card">
+            <div class="toolbar">
+                <div style="flex:1">
+                    <div id="selectedLabel" class="muted"></div>
+                    <div id="selectedTargetName" style="font-size:18px;font-weight:700;color:var(--accent)">—</div>
+                    <div id="saveStatus" class="save-status muted" aria-live="polite"></div>
+                </div>
+                <div style="display:flex;gap:8px">
+                    <button id="deleteTargetBtn" class="btn danger small" title="Excluir alvo selecionado" aria-label="Excluir alvo"></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="row" style="justify-content:space-between">
+                <div style="position:relative">
+                    <div style="display:flex;justify-content:space-between;align-items:center">
+                        <div id="categoriesLabel" class="muted"></div>
+                        <button id="toggleNewCatBtn" class="btn small" aria-expanded="false" aria-controls="newCategoryContainer">Adicionar Categoria</button>
+                    </div>
+                    <div id="newCategoryContainer" style="display:none;margin-top:8px;gap:12px;align-items:center">
+                        <input id="newCategoryInput" type="text" placeholder="" aria-label="Nova categoria" />
+                        <button id="addCategoryBtn" class="btn small" title="Adicionar categoria"></button>
+                        <button id="cancelNewCategoryBtn" class="btn small" title="Cancelar" aria-label="Cancelar">✖</button>
+                    </div>
+                    <div id="categories" class="categories" style="margin-top:8px"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="notesArea" class="card hidden">
+            <div>
+                <div id="notesLabel" class="muted"></div>
+                <div id="notesList" class="notes-list" style="max-height:50vh;overflow:auto;margin-top:8px"></div>
+            </div>
+            <div style="margin-top:12px">
+                <div id="newNoteLabel" class="muted"></div>
+                <textarea id="noteContent" placeholder="" aria-label="Conteúdo da anotação" style="margin-top:8px;min-height:120px"></textarea>
+                <div style="display:flex;gap:12px;margin-top:8px">
+                    <button id="addNoteBtn" class="btn" title="Adicionar anotação" aria-label="Adicionar anotação"></button>
+                    <button id="clearNoteBtn" class="btn" title="Limpar anotação / cancelar edição" aria-label="Limpar anotação"></button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="card"></footer>
+    </main>
+</div>
+
+<script>
+(function(){
+    const STORAGE_KEY = 'bb_anotacoes_v1';
+    // defaultCategories removed to avoid hardcoded Portuguese labels
+    const defaultCategories = [];
+
+    // DOM
+    const newTargetInput = document.getElementById('newTargetInput');
+    const addTargetBtn = document.getElementById('addTargetBtn');
+    const targetsList = document.getElementById('targetsList');
+    const selectedTargetName = document.getElementById('selectedTargetName');
+    const deleteTargetBtn = document.getElementById('deleteTargetBtn');
+    const categoriesEl = document.getElementById('categories');
+    const newCategoryInput = document.getElementById('newCategoryInput');
+    const addCategoryBtn = document.getElementById('addCategoryBtn');
+    const toggleNewCatBtn = document.getElementById('toggleNewCatBtn');
+    const newCategoryContainer = document.getElementById('newCategoryContainer');
+    const cancelNewCategoryBtn = document.getElementById('cancelNewCategoryBtn');
+    const notesArea = document.getElementById('notesArea');
+    const noteContent = document.getElementById('noteContent');
+    const addNoteBtn = document.getElementById('addNoteBtn');
+    const clearNoteBtn = document.getElementById('clearNoteBtn');
+    const notesList = document.getElementById('notesList');
+    const exportBtn = document.getElementById('exportBtn');
+
+    // state
+    let data = { targets: {} };
+    let selectedTarget = null;
+    let selectedCategory = null;
+    let selectedSubcategory = null;
+    let editingNoteId = null;
+
+    // persistence
+    function load() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed === 'object') data = parsed;
+            }
+        } catch(e) { console.error(e) }
+        if (!data || typeof data !== 'object') data = { targets: {} };
+        if (!data.targets || typeof data.targets !== 'object') data.targets = {};
+    }
+    function save() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e) { console.error(e); } }
+
+    // helpers
+    function id(){ return 'id_' + Math.random().toString(36).slice(2,9); }
+    function formatDate(ts){ const d=new Date(ts); return d.toLocaleString(); }
+    // language
+    const LANG_KEY = 'bb_lang';
+    const langs = {
+        pt: {
+            title: 'N0tesBugB',
+            addTargetPlaceholder: 'Adicionar alvo (ex: example.com)',
+            addBtn: 'Adicionar',
+            export: 'Exportar',
+            import: 'Importar',
+            targets: 'Alvos',
+            selected: 'Alvo selecionado',
+            categories: 'Categorias',
+            addCategory: 'Adicionar',
+            newCategoryPlaceholder: 'Nova categoria',
+            newNote: 'Nova anotação',
+            notes: 'Anotações',
+            addNote: 'Adicionar anotação',
+            clear: 'Limpar',
+            delete: 'Excluir',
+            save: 'Salvar',
+            cancel: 'Cancelar',
+            confirm: 'Confirmar',
+            rename: 'Renomear',
+            open: 'Abrir'
+            ,
+            noTargets: 'Nenhum alvo. Adicione um alvo para começar.',
+            enterTargetName: 'Digite o nome do alvo.',
+            targetExists: 'Alvo já existe.',
+            targetExistsRename: 'Já existe um alvo com esse nome.',
+            selectTarget: 'Selecione um alvo.',
+            categoryExists: 'Categoria já existe.',
+            noNotes: 'Nenhuma anotação nessa categoria.',
+            subcategories: 'Subcategorias',
+            selectTargetAndCategory: 'Selecione alvo e categoria.',
+            writeNote: 'Escreva a anotação.',
+            notePlaceholder: 'Escreva a anotação...',
+            subcatPrompt: 'Nome da subcategoria para "{cat}"',
+            confirmDeleteTarget: 'Excluir o alvo "{name}"? Esta ação não pode ser desfeita.',
+            confirmDeleteCategory: 'Excluir categoria "{cat}"?',
+            confirmDeleteSubcategory: 'Excluir subcategoria "{sub}" da categoria "{cat}"?',
+            invalidFile: 'Arquivo inválido: {err}',
+            readFileError: 'Erro ao ler o arquivo.',
+            invalidFormat: 'Formato inválido. O arquivo deve conter um objeto com a chave "targets".',
+            storageNotice: 'Dados salvos no navegador (localStorage). Use Exportar para backup.'
+            ,
+            footerTip: 'Dicas: crie categorias por tipo (Indícios de Vulnerabilidade, Vulnerabilidade, Gatilhos) e use conteúdo para quick-filter.',
+            langPtLabel: 'Português - Brasil',
+            langEnLabel: 'English'
+            ,
+            noTargets: 'Nenhum alvo. Adicione um alvo para começar.',
+            enterTargetName: 'Digite o nome do alvo.',
+            targetExists: 'Alvo já existe.',
+            targetExistsRename: 'Já existe um alvo com esse nome.',
+            selectTarget: 'Selecione um alvo.',
+            categoryExists: 'Categoria já existe.',
+            noNotes: 'Nenhuma anotação nessa categoria.',
+            selectTargetAndCategory: 'Selecione alvo e categoria.',
+            writeNote: 'Escreva a anotação.',
+            confirmDeleteTarget: 'Excluir o alvo "{name}"? Esta ação não pode ser desfeita.',
+            confirmDeleteCategory: 'Excluir categoria "{cat}"?',
+            confirmDeleteSubcategory: 'Excluir subcategoria "{sub}" da categoria "{cat}"?',
+            invalidFile: 'Arquivo inválido: {err}',
+            readFileError: 'Erro ao ler o arquivo.',
+            invalidFormat: 'Formato inválido. O arquivo deve conter um objeto com a chave "targets".',
+            storageNotice: 'Dados salvos no navegador (localStorage). Use Exportar para backup.',
+            saved: 'Salvo',
+            unsaved: 'Não salvo',
+            saving: 'Salvando...',
+            draftRestored: 'Rascunho restaurado',
+            shortcutSave: 'Atalho: Ctrl+S',
+            shortcutAdd: 'Atalho: Ctrl+Enter',
+            deleteTarget: 'Excluir alvo'
+        },
+        // added keys (autosave / shortcuts)
+        en: {
+            title: 'N0tesBugB',
+            addTargetPlaceholder: 'Add target (eg: example.com)',
+            addBtn: 'Add',
+            export: 'Export',
+            import: 'Import',
+            targets: 'Targets',
+            selected: 'Selected target',
+            categories: 'Categories',
+            addCategory: 'Add',
+            newCategoryPlaceholder: 'New category',
+            newNote: 'New note',
+            notes: 'Notes',
+            addNote: 'Add note',
+            clear: 'Clear',
+            delete: 'Delete',
+            save: 'Save',
+            cancel: 'Cancel',
+            confirm: 'Confirm',
+            rename: 'Rename',
+            open: 'Open'
+            ,
+            noTargets: 'No targets. Add a target to start.',
+            enterTargetName: 'Enter the target name.',
+            targetExists: 'Target already exists.',
+            targetExistsRename: 'A target with that name already exists.',
+            selectTarget: 'Select a target.',
+            categoryExists: 'Category already exists.',
+            noNotes: 'No notes in this category.',
+            subcategories: 'Subcategories',
+            selectTargetAndCategory: 'Select target and category.',
+            writeNote: 'Write the note.',
+            notePlaceholder: 'Write the note...',
+            subcatPrompt: 'Subcategory name for "{cat}"',
+            confirmDeleteTarget: 'Delete target "{name}"? This action cannot be undone.',
+            confirmDeleteCategory: 'Delete category "{cat}"?',
+            confirmDeleteSubcategory: 'Delete subcategory "{sub}" from category "{cat}"?',
+            invalidFile: 'Invalid file: {err}',
+            readFileError: 'Error reading the file.',
+            invalidFormat: 'Invalid format. File must contain an object with the "targets" key.',
+            storageNotice: 'Data is saved in the browser (localStorage). Use Export to backup.',
+            saved: 'Saved',
+            unsaved: 'Unsaved',
+            saving: 'Saving...',
+            draftRestored: 'Draft restored',
+            shortcutSave: 'Shortcut: Ctrl+S',
+            shortcutAdd: 'Shortcut: Ctrl+Enter',
+            footerTip: 'Tips: create categories by type and use content for quick-filter.',
+            langPtLabel: 'Português - Brasil',
+            langEnLabel: 'English'
+            ,
+            noTargets: 'No targets. Add a target to start.',
+            enterTargetName: 'Enter the target name.',
+            targetExists: 'Target already exists.',
+            targetExistsRename: 'A target with that name already exists.',
+            selectTarget: 'Select a target.',
+            categoryExists: 'Category already exists.',
+            noNotes: 'No notes in this category.',
+            selectTargetAndCategory: 'Select target and category.',
+            writeNote: 'Write the note.',
+            confirmDeleteTarget: 'Delete target "{name}"? This action cannot be undone.',
+            confirmDeleteCategory: 'Delete category "{cat}"?',
+            confirmDeleteSubcategory: 'Delete subcategory "{sub}" from category "{cat}"?',
+            invalidFile: 'Invalid file: {err}',
+            readFileError: 'Error reading the file.',
+            invalidFormat: 'Invalid format. File must contain an object with the "targets" key.',
+            storageNotice: 'Data is saved in the browser (localStorage). Use Export to backup.'
+            ,
+            deleteTarget: 'Delete target'
+        }
+    };
+
+    // translation helper with replacements
+    function t(key, vars){ let s = Lkey(key); if (!s) return ''; if (vars){ for (const k in vars){ s = s.replace(new RegExp('\{' + k + '\}', 'g'), vars[k]); } } return s; }
+    // language helpers (global)
+    let currentLangKey = 'pt';
+    function Lkey(k){ return (langs[currentLangKey] && langs[currentLangKey][k]) || (langs.pt && langs.pt[k]) || ''; }
+
+    function applyLanguage(lang){
+        const L = langs[lang] || langs.pt;
+        currentLangKey = lang || 'pt';
+
+        document.title = L.title;
+        const h1 = document.querySelector('aside h1'); if (h1) h1.textContent = L.title;
+        // set document language attribute
+        try{ document.documentElement.lang = (lang === 'en' ? 'en' : 'pt-BR'); }catch(e){}
+        newTargetInput.placeholder = L.addTargetPlaceholder;
+        addTargetBtn.textContent = L.addBtn;
+        exportBtn.textContent = L.export;
+        const importBtnEl = document.getElementById('importBtn'); if (importBtnEl) importBtnEl.textContent = L.import;
+        // panel labels
+        const tEls = document.querySelectorAll('.muted');
+        // update known label elements
+        const selectedLabel = document.getElementById('selectedLabel'); if (selectedLabel) selectedLabel.textContent = L.selected || '';
+        const categoriesLabel = document.getElementById('categoriesLabel'); if (categoriesLabel) categoriesLabel.textContent = L.categories || '';
+        const addCategoryLabel = document.getElementById('addCategoryLabel'); if (addCategoryLabel) addCategoryLabel.textContent = L.addCategory || '';
+        const notesLabel = document.getElementById('notesLabel'); if (notesLabel) notesLabel.textContent = L.notes || '';
+        const newNoteLabel = document.getElementById('newNoteLabel'); if (newNoteLabel) newNoteLabel.textContent = L.newNote || '';
+        const selectedEl = document.getElementById('selectedTargetName'); if (selectedEl){ /* title stays inside area */ }
+        addCategoryBtn.textContent = L.addCategory;
+        newCategoryInput.placeholder = L.newCategoryPlaceholder;
+        const toggleBtn = document.getElementById('toggleNewCatBtn');
+        if (toggleBtn) toggleBtn.textContent = L.addCategory || 'Adicionar Categoria';
+        addNoteBtn.textContent = L.addNote;
+        clearNoteBtn.textContent = L.clear;
+        const storageNotice = document.getElementById('storageNotice'); if (storageNotice) storageNotice.textContent = L.storageNotice || '';
+        if (noteContent) noteContent.placeholder = L.notePlaceholder || '';
+        // footer tip replace
+        const footer = document.querySelector('footer.card'); if (footer) footer.textContent = L.footerTip || '';
+        const deleteTargetBtnEl = document.getElementById('deleteTargetBtn'); if (deleteTargetBtnEl) deleteTargetBtnEl.textContent = t('deleteTarget') || deleteTargetBtnEl.textContent;
+        // update language menu labels
+        const langMenuEl = document.getElementById('langMenu');
+        if (langMenuEl){
+            const optPt = langMenuEl.querySelector('.lang-option[data-lang="pt"]'); if (optPt) optPt.querySelector('span:last-child').textContent = L.langPtLabel || 'Português - Brasil';
+            const optEn = langMenuEl.querySelector('.lang-option[data-lang="en"]'); if (optEn) optEn.querySelector('span:last-child').textContent = L.langEnLabel || 'English';
+        }
+    }
+    // show a floating confirmation box (non-native) with message and callbacks
+    function showConfirm(message, onYes, onNo){
+        // remove existing
+        const existing = document.getElementById('_bb_confirm');
+        if (existing) existing.remove();
+        const box = document.createElement('div');
+        box.id = '_bb_confirm';
+        box.className = 'confirm-box';
+        const msg = document.createElement('div'); msg.className = 'msg'; msg.textContent = message;
+        const actions = document.createElement('div'); actions.className = 'actions';
+        const btnNo = document.createElement('button'); btnNo.className='cancel'; btnNo.textContent=Lkey('cancel');
+        const btnYes = document.createElement('button'); btnYes.textContent=Lkey('confirm');
+        btnNo.addEventListener('click', ()=>{ box.remove(); if (typeof onNo==='function') onNo(); });
+        btnYes.addEventListener('click', ()=>{ box.remove(); if (typeof onYes==='function') onYes(); });
+        actions.appendChild(btnNo); actions.appendChild(btnYes);
+        box.appendChild(msg); box.appendChild(actions);
+        document.body.appendChild(box);
+        // focus confirm for keyboard
+        btnYes.focus();
+    }
+    // small non-blocking toast
+    function showToast(message, opts){
+        opts = opts || {};
+        const wrapId = '_bb_toast_wrap';
+        let wrap = document.getElementById(wrapId);
+        if (!wrap){ wrap = document.createElement('div'); wrap.id = wrapId; wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
+        const t = document.createElement('div'); t.className = 'toast' + (opts.error? ' error' : '');
+        t.textContent = message;
+        wrap.appendChild(t);
+        const timeout = typeof opts.timeout === 'number' ? opts.timeout : 3500;
+        setTimeout(()=>{ try{ t.remove(); }catch(e){} }, timeout);
+    }
+
+    // autosave / draft helpers
+    const DRAFT_KEY = STORAGE_KEY + '_draft';
+    let autosaveTimer = null;
+    function setSaveStatus(text){ const el = document.getElementById('saveStatus'); if (el) el.textContent = text || ''; }
+    function saveDraft(){ try{
+            if (!selectedTarget || !selectedCategory || !noteContent) { localStorage.removeItem(DRAFT_KEY); setSaveStatus(''); return; }
+            const draft = { target: selectedTarget, category: selectedCategory, sub: selectedSubcategory, content: noteContent.value || '', ts: Date.now() };
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+            setSaveStatus(Lkey('saved'));
+        }catch(e){ console.error(e); }
+    }
+    function scheduleDraftSave(){ clearTimeout(autosaveTimer); setSaveStatus(Lkey('unsaved')); autosaveTimer = setTimeout(()=>{ saveDraft(); }, 900); }
+    function loadDraftIfExists(){ try{
+            const raw = localStorage.getItem(DRAFT_KEY);
+            if (!raw) return;
+            const d = JSON.parse(raw);
+            if (!d || !d.target) return;
+            if (d.target === selectedTarget && d.category === selectedCategory){ if (noteContent && !noteContent.value){ noteContent.value = d.content || ''; setSaveStatus(Lkey('draftRestored')); showToast(Lkey('draftRestored')); } }
+        }catch(e){ console.error(e); }
+    }
+
+    // render
+    function renderTargets(){
+        targetsList.innerHTML = '';
+        const keys = Object.keys(data.targets || {});
+        if (keys.length === 0){
+            const el = document.createElement('div');
+            el.className='muted';
+            el.textContent = t('noTargets');
+            targetsList.appendChild(el);
+            return;
+        }
+        keys.forEach(key=>{
+            const t = data.targets[key] || {};
+            const div = document.createElement('div');
+            div.className = 'target-item' + (selectedTarget===key ? ' active' : '');
+
+            // left column (title + meta)
+            const left = document.createElement('div');
+            left.style.display = 'flex';
+            left.style.flexDirection = 'column';
+
+            const title = document.createElement('div');
+            title.style.fontWeight = '600';
+            title.textContent = key;
+
+            const meta = document.createElement('div');
+            meta.className = 'muted';
+            meta.style.fontSize = '12px';
+            meta.textContent = `${Object.keys(t.categories||{}).length} ${Lkey('categories')} • ${ (t.noteCount||0) } ${Lkey('notes')}`;
+
+            left.appendChild(title);
+            left.appendChild(meta);
+
+            // right column (buttons)
+            const right = document.createElement('div');
+            right.style.display = 'flex';
+            right.style.gap = '8px';
+            right.style.alignItems = 'center';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn small';
+            editBtn.textContent = Lkey('rename');
+            editBtn.addEventListener('click', ()=> startInlineRenameTarget(title, key));
+
+            const selectBtn = document.createElement('button');
+            selectBtn.className = 'btn small';
+            selectBtn.textContent = Lkey('open');
+            selectBtn.addEventListener('click', ()=>selectTarget(key));
+
+            right.appendChild(editBtn);
+            right.appendChild(selectBtn);
+
+            div.appendChild(left);
+            div.appendChild(right);
+
+            targetsList.appendChild(div);
+        });
+    }
+
+    function renderTargetDetails(){
+        if (!selectedTarget){
+            if (selectedTargetName) selectedTargetName.textContent='—';
+            if (categoriesEl) categoriesEl.innerHTML='';
+            if (notesArea) notesArea.classList.add('hidden');
+            if (deleteTargetBtn) deleteTargetBtn.disabled = true;
+            return;
+        }
+        selectedTargetName.textContent = selectedTarget;
+        if (deleteTargetBtn) deleteTargetBtn.disabled = false;
+        // categories
+        categoriesEl.innerHTML = '';
+        const cats = data.targets[selectedTarget] ? (data.targets[selectedTarget].categories || {}) : {};
+        Object.keys(cats).forEach(cat=>{
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.flexDirection = 'column';
+            wrapper.style.alignItems = 'flex-start';
+            wrapper.style.gap = '6px';
+            wrapper.style.padding = '6px';
+
+            const topRow = document.createElement('div');
+            topRow.style.display = 'flex';
+            topRow.style.alignItems = 'center';
+            topRow.style.gap = '6px';
+
+            const btn = document.createElement('div');
+            btn.className = 'cat' + (selectedCategory===cat ? ' active' : '');
+            btn.textContent = cat;
+            btn.addEventListener('click',()=>{ selectedCategory=cat; selectedSubcategory=null; renderTargetDetails(); });
+
+
+            const controls = document.createElement('div');
+            controls.style.display = 'flex';
+            controls.style.gap = '6px';
+            controls.style.marginLeft = '6px';
+
+            const delCatBtn = document.createElement('button');
+            delCatBtn.className = 'btn small danger';
+            delCatBtn.textContent = '✖';
+            delCatBtn.title = 'Excluir categoria';
+            delCatBtn.style.width = '30px';
+            delCatBtn.style.height = '26px';
+            delCatBtn.style.padding = '2px';
+            delCatBtn.style.fontSize = '14px';
+            delCatBtn.addEventListener('click',(ev)=>{ ev.stopPropagation(); deleteCategory(cat); });
+
+            controls.appendChild(delCatBtn);
+
+            topRow.appendChild(btn);
+            topRow.appendChild(controls);
+            wrapper.appendChild(topRow);
+
+            // label above the subcategory button (per-category)
+            const subLabel = document.createElement('div');
+            subLabel.className = 'muted';
+            subLabel.style.fontSize = '12px';
+            subLabel.style.marginTop = '8px';
+            subLabel.textContent = Lkey('subcategories') || 'Subcategories';
+            wrapper.appendChild(subLabel);
+
+            // add-sub square placed under the category name for clearer affordance
+            const subSquare = document.createElement('button');
+            subSquare.className = 'btn small';
+            subSquare.textContent = 'Sub +';
+            subSquare.title = 'Adicionar subcategoria';
+            subSquare.style.width = '64px';
+            subSquare.style.height = '36px';
+            subSquare.style.padding = '4px 8px';
+            subSquare.style.fontSize = '13px';
+            subSquare.style.borderRadius = '8px';
+            subSquare.style.marginTop = '6px';
+            subSquare.style.display = 'inline-flex';
+            subSquare.style.alignItems = 'center';
+            subSquare.style.justifyContent = 'center';
+            subSquare.addEventListener('click',(ev)=>{ ev.stopPropagation(); showInlineSubInput(cat, wrapper); });
+            wrapper.appendChild(subSquare);
+
+            // render subcategories for this category (vertical under the category)
+            const cur = cats[cat];
+            const hasSub = cur && typeof cur === 'object' && !Array.isArray(cur) && cur.sub && Object.keys(cur.sub).length>0;
+            if (hasSub){
+                const subWrap = document.createElement('div');
+                subWrap.style.display = 'flex';
+                subWrap.style.flexDirection = 'column';
+                subWrap.style.gap = '6px';
+                subWrap.style.marginTop = '6px';
+                Object.keys(cur.sub).forEach(sub=>{
+                    const row = document.createElement('div');
+                    row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px';
+
+                    const sbtn = document.createElement('div');
+                    sbtn.className = 'subcat' + (selectedSubcategory===sub ? ' active' : '');
+                    sbtn.textContent = sub;
+                    sbtn.title = sub;
+                    sbtn.style.minWidth = '48px';
+                    sbtn.addEventListener('click',()=>{ selectedCategory = cat; selectedSubcategory = sub; renderTargetDetails(); });
+                    
+
+                    const del = document.createElement('button');
+                    del.className = 'btn small danger';
+                    del.style.padding = '6px';
+                    del.style.fontSize = '12px';
+                    del.textContent = 'x';
+                    del.title = 'Remover subcategoria';
+                    del.addEventListener('click',(ev)=>{ ev.stopPropagation(); deleteSubcategoryPrompt(cat, sub); });
+
+                    row.appendChild(sbtn); row.appendChild(del);
+                    subWrap.appendChild(row);
+                });
+                wrapper.appendChild(subWrap);
+            }
+
+            categoriesEl.appendChild(wrapper);
+        });
+
+        notesArea.classList.toggle('hidden', !selectedCategory);
+        renderNotes();
+        // try restore draft for this target/category
+        loadDraftIfExists();
+    }
+
+    function renderNotes(){
+        notesList.innerHTML = '';
+        if (!selectedTarget || !selectedCategory) return;
+        let notes = [];
+        const catVal = data.targets[selectedTarget].categories[selectedCategory];
+        if (!catVal) notes = [];
+        else if (Array.isArray(catVal)) notes = catVal;
+        else {
+            // object with optional _notes and sub
+            if (selectedSubcategory){
+                notes = (catVal.sub && catVal.sub[selectedSubcategory]) || [];
+            } else {
+                notes = catVal._notes || [];
+            }
+        }
+        if (notes.length===0){
+            const el = document.createElement('div');
+            el.className='muted';
+            el.textContent = t('noNotes');
+            notesList.appendChild(el);
+            return;
+        }
+        notes.slice().reverse().forEach(note=>{
+            const div = document.createElement('div');
+            div.className = 'note';
+
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'start';
+
+            const left = document.createElement('div');
+            left.style.flex = '1';
+
+            const metaEl = document.createElement('div');
+            metaEl.className = 'note-meta';
+            metaEl.style.fontSize = '16px';
+            metaEl.style.lineHeight = '1.4';
+            metaEl.textContent = (note.content || '').substring(0,200).replace(/\n/g,' ');
+
+            const dateEl = document.createElement('div');
+            dateEl.style.color = 'var(--muted)';
+            dateEl.style.fontSize = '12px';
+            dateEl.style.marginTop = '6px';
+            dateEl.textContent = formatDate(note.ts);
+
+            metaEl.appendChild(dateEl);
+            left.appendChild(metaEl);
+
+            // enable editing on double-click
+            div.addEventListener('dblclick', ()=> startEditing(note.id));
+
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+            actions.style.marginLeft = '12px';
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn small danger';
+            delBtn.textContent = Lkey('delete');
+            delBtn.addEventListener('click', ()=>deleteNote(note.id));
+
+            actions.appendChild(delBtn);
+
+            row.appendChild(left);
+            row.appendChild(actions);
+            div.appendChild(row);
+            notesList.appendChild(div);
+        });
+    }
+
+    // actions
+    function addTarget(){
+        const name = newTargetInput.value.trim();
+        if (!name) return showToast(t('enterTargetName'), {error:true});
+        if (data.targets[name]) return showToast(t('targetExists'), {error:true});
+        // create empty target without pre-filled categories
+        data.targets[name] = { categories: {}, noteCount:0 };
+        selectedTarget = name;
+        selectedCategory = null;
+        selectedSubcategory = null;
+        save(); newTargetInput.value=''; renderTargets(); renderTargetDetails();
+    }
+
+    function selectTarget(name){
+        selectedTarget = name;
+        // if no category selected, choose first
+        const cats = Object.keys(data.targets[name].categories||{});
+        selectedCategory = cats[0] || null;
+        renderTargets(); renderTargetDetails();
+        // load any draft for this selection
+        loadDraftIfExists();
+    }
+
+    // Inline rename for targets (replaces prompt-based flow)
+    function startInlineRenameTarget(el, oldName){
+        if (!el) return;
+        const container = document.createElement('span');
+        container.style.display = 'inline-flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '6px';
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = oldName;
+        input.style.minWidth = '140px';
+        input.style.padding = '4px 8px';
+        input.style.borderRadius = '6px';
+        input.style.border = '1px solid rgba(255,255,255,0.08)';
+        input.style.background = 'transparent';
+        input.setAttribute('aria-label', 'Rename target');
+
+        const ok = document.createElement('button'); ok.className='btn small'; ok.textContent='✓'; ok.title='Salvar';
+        const cancelBtn = document.createElement('button'); cancelBtn.className='btn small'; cancelBtn.textContent='✖'; cancelBtn.title='Cancelar';
+
+        container.appendChild(input); container.appendChild(ok); container.appendChild(cancelBtn);
+        el.replaceWith(container);
+        input.focus(); input.select();
+
+        let finished = false;
+        function restore(){ try{ container.replaceWith(el); }catch(e){} }
+        function doFinish(){ if (finished) return; finished = true; const name = (input.value||'').trim(); if (!name){ restore(); return; } if (name === oldName){ restore(); return; } if (data.targets[name]){ showToast(t('targetExistsRename'), {error:true}); finished = false; input.focus(); return; } data.targets[name] = data.targets[oldName]; delete data.targets[oldName]; if (selectedTarget===oldName) selectedTarget=name; save(); renderTargets(); renderTargetDetails(); }
+        function doCancel(){ if (finished) return; finished = true; restore(); }
+
+        ok.addEventListener('click',(e)=>{ e.stopPropagation(); doFinish(); });
+        cancelBtn.addEventListener('click',(e)=>{ e.stopPropagation(); doCancel(); });
+        input.addEventListener('keydown',(e)=>{ if (e.key==='Enter'){ e.stopPropagation(); doFinish(); } else if (e.key==='Escape'){ e.stopPropagation(); doCancel(); } });
+        input.addEventListener('blur', ()=>{ setTimeout(()=>{ if (!finished) doFinish(); }, 150); });
+    }
+
+    function deleteTarget(){
+        if (!selectedTarget) return;
+        showConfirm(t('confirmDeleteTarget',{name:selectedTarget}), ()=>{
+            delete data.targets[selectedTarget];
+            selectedTarget = null; selectedCategory = null; selectedSubcategory = null;
+            save(); renderTargets(); renderTargetDetails();
+        }, ()=>{});
+    }
+
+    function addCategory(){
+        if (!selectedTarget) return showToast(t('selectTarget'), {error:true});
+        const name = newCategoryInput.value.trim();
+        if (!name) return;
+        const cats = data.targets[selectedTarget].categories;
+        if (cats[name]) return showToast(t('categoryExists'), {error:true});
+        cats[name] = [];
+        selectedCategory = name;
+        newCategoryInput.value='';
+        // hide input container after adding
+        if (newCategoryContainer){ newCategoryContainer.style.display = 'none'; if (toggleNewCatBtn) toggleNewCatBtn.setAttribute('aria-expanded','false'); }
+        save(); renderTargetDetails(); renderTargets();
+    }
+
+    function deleteCategory(cat){
+        if (!selectedTarget) return;
+        showConfirm(t('confirmDeleteCategory',{cat:cat}), ()=>{
+            delete data.targets[selectedTarget].categories[cat];
+            selectedCategory = Object.keys(data.targets[selectedTarget].categories)[0] || null;
+            selectedSubcategory = null;
+            save(); renderTargetDetails(); renderTargets();
+        }, ()=>{});
+    }
+
+    
+    
+    // Inline rename helpers (use input instead of prompt)
+    
+
+    function addNote(){
+        if (!selectedTarget || !selectedCategory) return showToast(t('selectTargetAndCategory'), {error:true});
+        const content = noteContent.value.trim();
+        if (!content) return showToast(t('writeNote'), {error:true});
+
+        const catVal = data.targets[selectedTarget].categories[selectedCategory];
+        if (editingNoteId){
+            // update existing note
+            const note = findNoteById(editingNoteId);
+            if (!note){ editingNoteId = null; addNoteBtn.textContent = Lkey('addNote'); clearNoteBtn.textContent = Lkey('clear'); return; }
+            note.content = content;
+            note.ts = Date.now();
+            editingNoteId = null;
+            addNoteBtn.textContent = Lkey('addNote');
+            clearNoteBtn.textContent = Lkey('clear');
+        } else {
+            const note = { id: id(), content, ts: Date.now() };
+            if (Array.isArray(catVal)){
+                catVal.push(note);
+            } else if (catVal && typeof catVal === 'object'){
+                if (selectedSubcategory){
+                    if (!catVal.sub) catVal.sub = {};
+                    if (!catVal.sub[selectedSubcategory]) catVal.sub[selectedSubcategory] = [];
+                    catVal.sub[selectedSubcategory].push(note);
+                } else {
+                    if (!catVal._notes) catVal._notes = [];
+                    catVal._notes.push(note);
+                }
+            } else {
+                // safety: create as array
+                data.targets[selectedTarget].categories[selectedCategory] = [note];
+            }
+        }
+        // recalc noteCount
+        data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
+            if (Array.isArray(a)) return s + a.length;
+            if (a && typeof a === 'object'){
+                let subSum = (a._notes? a._notes.length : 0);
+                if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
+                return s + subSum;
+            }
+            return s;
+        },0);
+        save(); noteContent.value=''; renderNotes(); renderTargets();
+    }
+
+    function clearNote(){
+        // if editing, cancel edit
+        if (editingNoteId){ editingNoteId = null; addNoteBtn.textContent = Lkey('addNote'); clearNoteBtn.textContent = Lkey('clear'); }
+        noteContent.value='';
+    }
+
+    // view/edit removed: notes are shown inline and edited via delete + re-add if needed
+
+    function deleteNote(id){
+        const catVal = data.targets[selectedTarget].categories[selectedCategory];
+        let catNotes = null;
+        if (Array.isArray(catVal)) catNotes = catVal;
+        else if (catVal && typeof catVal === 'object'){
+            if (selectedSubcategory) catNotes = (catVal.sub && catVal.sub[selectedSubcategory]) || null;
+            else catNotes = catVal._notes || null;
+        }
+        if (!catNotes) return;
+        const idx = catNotes.findIndex(n=>n.id===id);
+        if (idx>=0){ catNotes.splice(idx,1);
+            // recalc noteCount
+            data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
+                if (Array.isArray(a)) return s + a.length;
+                if (a && typeof a === 'object'){
+                    let subSum = (a._notes? a._notes.length : 0);
+                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
+                    return s + subSum;
+                }
+                return s;
+            },0);
+            save(); renderNotes(); renderTargets(); }
+    }
+
+    function startEditing(id){
+        const note = findNoteById(id);
+        if (!note) return;
+        editingNoteId = id;
+        noteContent.value = note.content || '';
+        addNoteBtn.textContent = Lkey('save');
+        clearNoteBtn.textContent = Lkey('cancel');
+        noteContent.focus();
+        // scroll to editor
+        noteContent.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+
+    function findNoteById(id){
+        const cats = data.targets[selectedTarget].categories || {};
+        for (const c in cats){
+            const val = cats[c];
+            if (Array.isArray(val)){
+                const note = val.find(n=>n.id===id);
+                if (note) return note;
+            } else if (val && typeof val === 'object'){
+                if (val._notes){ const note = val._notes.find(n=>n.id===id); if (note) return note; }
+                if (val.sub){ for (const s in val.sub){ const note = val.sub[s].find(n=>n.id===id); if (note) return note; } }
+            }
+        }
+        return null;
+    }
+
+    function addSubcategoryPrompt(cat){
+        // Prompt-based add removed. Use the in-page "Sub +" button below the category to add subcategories.
+        showToast('Use the Sub + button below the category to add a subcategory');
+    }
+
+    function createSubcategory(cat, name){
+        if (!selectedTarget) return;
+        if (!name) return;
+        const cats = data.targets[selectedTarget].categories;
+        const cur = cats[cat];
+        if (!cur) return;
+        if (Array.isArray(cur)){
+            cats[cat] = { _notes: cur.slice(), sub: {} };
+        }
+        if (!cats[cat].sub) cats[cat].sub = {};
+        if (cats[cat].sub[name]) return;
+        cats[cat].sub[name] = [];
+        selectedCategory = cat; selectedSubcategory = name;
+        save(); renderTargetDetails(); renderTargets();
+    }
+
+    function showInlineSubInput(cat, wrapper){
+        if (!wrapper) return;
+        if (wrapper.querySelector('.sub-input')) return;
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Nova subcategoria';
+        input.className = 'sub-input';
+        input.style.marginLeft = '6px';
+        input.style.padding = '6px';
+        input.style.borderRadius = '6px';
+        wrapper.appendChild(input);
+        input.focus();
+        function done(){
+            const val = input.value.trim();
+            if (val) createSubcategory(cat, val);
+            input.remove();
+        }
+        input.addEventListener('keydown',(e)=>{ if (e.key==='Enter'){ done(); } else if (e.key==='Escape'){ input.remove(); } });
+        input.addEventListener('blur', done);
+    }
+
+    function deleteSubcategoryPrompt(cat, sub){
+        if (!selectedTarget) return;
+        showConfirm(t('confirmDeleteSubcategory',{sub:sub,cat:cat}), ()=>{
+            const cats = data.targets[selectedTarget].categories;
+            const cur = cats[cat];
+            if (!cur || typeof cur !== 'object' || !cur.sub) return;
+            delete cur.sub[sub];
+            if (selectedSubcategory===sub) selectedSubcategory=null;
+            // recalc noteCount
+            data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
+                if (Array.isArray(a)) return s + a.length;
+                if (a && typeof a === 'object'){
+                    let subSum = (a._notes? a._notes.length : 0);
+                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
+                    return s + subSum;
+                }
+                return s;
+            },0);
+            save(); renderTargetDetails(); renderTargets();
+        }, ()=>{});
+    }
+
+    function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function exportData(){
+        const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'bb_anotacoes_export.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    // events
+    addTargetBtn.addEventListener('click', addTarget);
+    newTargetInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter') addTarget(); });
+    deleteTargetBtn.addEventListener('click', deleteTarget);
+    addCategoryBtn.addEventListener('click', addCategory);
+    newCategoryInput.addEventListener('keydown',(e)=>{ if(e.key==='Enter'){ addCategory(); } else if (e.key==='Escape'){ if (newCategoryContainer){ newCategoryContainer.style.display='none'; if (toggleNewCatBtn) toggleNewCatBtn.setAttribute('aria-expanded','false'); } } });
+    // toggle/expand handlers for new category
+    if (toggleNewCatBtn && newCategoryContainer){
+        toggleNewCatBtn.addEventListener('click', ()=>{
+            const open = newCategoryContainer.style.display !== 'flex';
+            newCategoryContainer.style.display = open ? 'flex' : 'none';
+            toggleNewCatBtn.setAttribute('aria-expanded', open? 'true' : 'false');
+            if (open) { newCategoryInput.focus(); }
+        });
+    }
+    if (cancelNewCategoryBtn){ cancelNewCategoryBtn.addEventListener('click', ()=>{ if (newCategoryContainer){ newCategoryContainer.style.display='none'; if (toggleNewCatBtn) toggleNewCatBtn.setAttribute('aria-expanded','false'); newCategoryInput.value=''; } }); }
+    addNoteBtn.addEventListener('click', addNote);
+    clearNoteBtn.addEventListener('click', clearNote);
+    exportBtn.addEventListener('click', exportData);
+    if (noteContent){
+        noteContent.addEventListener('input', scheduleDraftSave);
+        noteContent.addEventListener('blur', saveDraft);
+        noteContent.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key === 'Enter'){ e.preventDefault(); addNote(); } });
+    }
+    // language selector (flag button + popover menu)
+    const langBtn = document.getElementById('langBtn');
+    const langMenu = document.getElementById('langMenu');
+    const langFlags = { pt: '🇧🇷', en: '🇺🇸' };
+    (function initLang(){
+        const saved = localStorage.getItem(LANG_KEY) || (navigator.language && navigator.language.startsWith('en') ? 'en' : 'pt');
+        applyLanguage(saved);
+        if (langBtn){
+            langBtn.textContent = langFlags[saved] || saved;
+            langBtn.title = (saved === 'pt' ? langs.pt.langPtLabel : langs.en.langEnLabel);
+            langBtn.setAttribute('aria-expanded','false');
+            // toggle menu
+            langBtn.addEventListener('click',(e)=>{
+                e.stopPropagation();
+                if (!langMenu) return;
+                const open = !langMenu.classList.contains('hidden');
+                if (open){
+                    langMenu.classList.add('hidden');
+                    langBtn.setAttribute('aria-expanded','false');
+                    langMenu.setAttribute('aria-hidden','true');
+                } else {
+                    langMenu.classList.remove('hidden');
+                    langBtn.setAttribute('aria-expanded','true');
+                    langMenu.setAttribute('aria-hidden','false');
+                }
+            });
+        }
+        if (langMenu){
+            // prevent clicks inside menu from closing it
+            langMenu.addEventListener('click', (e)=> e.stopPropagation());
+            const opts = langMenu.querySelectorAll('.lang-option');
+            opts.forEach(opt=>{
+                opt.addEventListener('click',(e)=>{
+                    e.stopPropagation();
+                    const next = opt.dataset.lang;
+                    if (!next) return;
+                    localStorage.setItem(LANG_KEY, next);
+                    applyLanguage(next);
+                    if (langBtn){ langBtn.textContent = langFlags[next] || next; langBtn.title = (next==='pt'? langs.pt.langPtLabel : langs.en.langEnLabel); }
+                    langMenu.classList.add('hidden');
+                    if (langBtn) langBtn.setAttribute('aria-expanded','false');
+                    langMenu.setAttribute('aria-hidden','true');
+                });
+            });
+        }
+        // click outside closes menu
+        document.addEventListener('click', ()=>{ if (langMenu) { langMenu.classList.add('hidden'); if (langBtn) langBtn.setAttribute('aria-expanded','false'); langMenu.setAttribute('aria-hidden','true'); } });
+    })();
+    // import handlers
+    const importFileInput = document.getElementById('importFileInput');
+    const importBtn = document.getElementById('importBtn');
+    if (importBtn && importFileInput){
+        importBtn.addEventListener('click', ()=> importFileInput.click());
+        importFileInput.addEventListener('change', handleImportFile);
+    }
+
+    function handleImportFile(e){
+        const f = (e.target && e.target.files && e.target.files[0]) || null;
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = function(){
+            try{
+                    const parsed = JSON.parse(String(reader.result));
+                    importData(parsed);
+                }catch(err){
+                    showToast(t('invalidFile',{err: (err && err.message ? err.message : err)}), {error:true, timeout:6000});
+                }
+        };
+        reader.onerror = function(){ showToast(t('readFileError'), {error:true}); };
+        reader.readAsText(f);
+        importFileInput.value = '';
+    }
+
+    function importData(parsed){
+        if (!parsed || typeof parsed !== 'object' || !parsed.targets || typeof parsed.targets !== 'object'){
+            return showToast(t('invalidFormat'), {error:true});
+        }
+        // importar sem pedir confirmação: mesclar por padrão
+        mergeImported(parsed);
+        save(); renderTargets(); renderTargetDetails();
+    }
+
+    function mergeImported(parsed){
+        const srcTargets = parsed.targets || {};
+        Object.keys(srcTargets).forEach(tname => {
+            const src = srcTargets[tname] || {};
+            if (!data.targets[tname]){
+                // clone source target safely
+                data.targets[tname] = { categories: {}, noteCount: 0 };
+            }
+            const dst = data.targets[tname];
+            const srcCats = src.categories || {};
+            Object.keys(srcCats).forEach(cat => {
+                const srcVal = srcCats[cat];
+                // ensure dst category exists
+                if (!dst.categories[cat]){
+                    // deep clone
+                    dst.categories[cat] = JSON.parse(JSON.stringify(srcVal));
+                    return;
+                }
+                const dstVal = dst.categories[cat];
+                // if both arrays -> append
+                if (Array.isArray(dstVal) && Array.isArray(srcVal)){
+                    srcVal.forEach(it=>dstVal.push(it));
+                } else if (Array.isArray(dstVal) && srcVal && typeof srcVal === 'object'){
+                    // convert dst to object to hold _notes + sub
+                    dst.categories[cat] = { _notes: dstVal.slice(), sub: {} };
+                    // merge srcVal into new structure
+                    if (Array.isArray(srcVal._notes)) srcVal._notes.forEach(it=>dst.categories[cat]._notes.push(it));
+                    if (srcVal.sub){ Object.keys(srcVal.sub).forEach(s=>{ dst.categories[cat].sub[s] = (dst.categories[cat].sub[s]||[]).concat(srcVal.sub[s]||[]); }); }
+                } else if (dstVal && typeof dstVal === 'object' && Array.isArray(srcVal)){
+                    // dst is object, src is array -> append into _notes
+                    dstVal._notes = dstVal._notes || [];
+                    srcVal.forEach(it=>dstVal._notes.push(it));
+                } else if (dstVal && typeof dstVal === 'object' && srcVal && typeof srcVal === 'object'){
+                    // both objects -> merge _notes and sub
+                    dstVal._notes = dstVal._notes || [];
+                    if (Array.isArray(srcVal._notes)) srcVal._notes.forEach(it=>dstVal._notes.push(it));
+                    dstVal.sub = dstVal.sub || {};
+                    if (srcVal.sub){ Object.keys(srcVal.sub).forEach(s=>{ dstVal.sub[s] = (dstVal.sub[s]||[]).concat(srcVal.sub[s]||[]); }); }
+                }
+            });
+            // recalc noteCount
+            dst.noteCount = Object.values(dst.categories).reduce((s,a)=>{
+                if (Array.isArray(a)) return s + a.length;
+                if (a && typeof a === 'object'){
+                    let subSum = (a._notes? a._notes.length : 0);
+                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
+                    return s + subSum;
+                }
+                return s;
+            },0);
+        });
+    }
+
+    // init
+    load();
+    renderTargets();
+    if (!selectedTarget){
+        const keys = Object.keys(data.targets);
+        if (keys.length) { selectedTarget = keys[0]; selectedCategory = Object.keys(data.targets[selectedTarget].categories||{})[0] || null; selectedSubcategory = null; }
+    }
+    renderTargetDetails();
+
+    // keyboard shortcuts
+    document.addEventListener('keydown',(e)=>{
+        if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 'n'){
+            e.preventDefault(); newTargetInput.focus();
+            return;
+        }
+        // Ctrl+S / Cmd+S -> save current note (if editor focused)
+        if ((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === 's'){
+            if (document.activeElement === noteContent){ e.preventDefault(); setSaveStatus(Lkey('saving')); addNote(); setTimeout(()=> setSaveStatus(Lkey('saved')), 300); }
+        }
+    });
+
+    // expose for debugging (optional)
+    window._BB = { data, save };
+})();
+</script>
+</body>
+</html>
