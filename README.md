@@ -9,7 +9,7 @@
   
   2. Create a Category for your Annotation (e.g. Mechanisms, Routes, Pointers)
 
-  3.  Create a Sub-Category For your Annotation to more focus on the category i>
+  3.  Create Sub-Category to best scope (e.g. on the image)
   <img width="1476" height="827" alt="image" src="https://github.com/user-attachments/assets/5547cda9-c8e3-4d68-a446-990d63492ca4" />
 
   <h3>How to Install?</h3>
