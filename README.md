@@ -20,5 +20,7 @@
     `cd N0tesBugB` <br>
   3. Run Python HTTP server on the port of your choice (e.g. 8080)<br>
     `python3 -m http.server 8080` <br>
+  4. Acess the app in Local Server
+     `http://localhost:8080`
 
 <h2>Done.</h2>
