@@ -463,39 +463,67 @@
     function wrapQuotedStringsInDOM(root){
         if (!root) return;
         const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
-        const textNodes = [];
-        while(walker.nextNode()) textNodes.push(walker.currentNode);
-        textNodes.forEach(tn=>{
-            const s = tn.nodeValue;
-            if (!s) return;
-            const parts = s.split(/(("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'))/g);
-            if (parts.length === 1) return;
-            const parent = tn.parentNode;
-            parts.forEach(p=>{
-                if (!p) return;
-                if (/^("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')$/.test(p)){
-                    const span = document.createElement('span'); span.className='qq-string'; span.textContent = p; parent.insertBefore(span, tn);
-                } else {
-                    parent.insertBefore(document.createTextNode(p), tn);
+        const nodes = [];
+        while(walker.nextNode()) nodes.push(walker.currentNode);
+        const matchRe = /("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')/g;
+        nodes.forEach(tn=>{
+            try{
+                const parent = tn.parentNode;
+                if (!parent) return;
+                if (parent.closest){
+                    if (parent.closest('pre, code')) return;
+                    if (parent.closest('.qq-string')) return;
                 }
-            });
-            parent.removeChild(tn);
+                const s = tn.nodeValue;
+                if (!s) return;
+                // find quoted substrings
+                let match;
+                let lastIndex = 0;
+                const frag = document.createDocumentFragment();
+                while((match = matchRe.exec(s)) !== null){
+                    const idx = match.index;
+                    if (idx > lastIndex) frag.appendChild(document.createTextNode(s.slice(lastIndex, idx)));
+                    const span = document.createElement('span'); span.className = 'qq-string'; span.textContent = match[0];
+                    frag.appendChild(span);
+                    lastIndex = match.index + match[0].length;
+                }
+                if (lastIndex === 0) return; // no matches
+                if (lastIndex < s.length) frag.appendChild(document.createTextNode(s.slice(lastIndex)));
+                parent.replaceChild(frag, tn);
+            }catch(e){}
         });
     }
 
     function renderNoteMarkdown(raw){
         try{
-            const pre = preprocessUrls(raw || '');
+            // if the raw content is valid JSON, pretty-print and render as a fenced code block
+            let source = raw || '';
+            try{
+                const t = (source || '').trim();
+                if (t && (t[0] === '{' || t[0] === '[')){
+                    const parsed = JSON.parse(t);
+                    source = '```json\n' + JSON.stringify(parsed, null, 2) + '\n```';
+                }
+            }catch(e){ /* not JSON, proceed as normal */ }
+
+            // If the source contains fenced code (we created for JSON) or already is code, skip URL preprocessing
+            const isCodeFence = /^```/.test(source.trim());
+            const pre = isCodeFence ? source : preprocessUrls(source);
             const md = (window.marked ? marked.parse(pre) : (pre.replace(/</g,'&lt;').replace(/>/g,'&gt;')));
             const clean = (window.DOMPurify ? DOMPurify.sanitize(md, {USE_PROFILES: {html: true}}) : md);
             // parse into DOM to wrap quoted strings and set anchors
             const parser = new DOMParser();
             const doc = parser.parseFromString('<div>' + clean + '</div>','text/html');
             const root = doc.body.firstChild;
-            // wrap quoted strings in text nodes
-            wrapQuotedStringsInDOM(root);
-            // ensure links open in new tab and are safe
+            // if the rendered content contains code blocks, skip quoted-string post-processing
+            // to avoid corrupting code/JSON. Still ensure links open safely.
             root.querySelectorAll('a').forEach(a=>{ try{ a.setAttribute('target','_blank'); a.setAttribute('rel','noopener noreferrer'); }catch(e){} });
+            // if there are code blocks, return as-is to avoid altering code content
+            if (root.querySelector && root.querySelector('pre, code')){
+                return root.innerHTML;
+            }
+            // otherwise, wrap quoted strings in text nodes for coloring
+            wrapQuotedStringsInDOM(root);
             return root.innerHTML;
         }catch(e){ return (raw||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     }
@@ -722,7 +750,7 @@
             // render markdown/HTML safely and highlight quoted strings
             try{
                 const rendered = renderNoteMarkdown(note.content || '');
-                metaEl.innerHTML = rendered.substring(0,1000); // truncate very long notes visually
+                metaEl.innerHTML = rendered; // render full sanitized HTML; visual clipping is handled by CSS
             }catch(e){ metaEl.textContent = (note.content || '').substring(0,200).replace(/\n/g,' '); }
 
             const dateEl = document.createElement('div');
