@@ -146,8 +146,6 @@
 <script>
 (function(){
     const STORAGE_KEY = 'bb_anotacoes_v1';
-    // defaultCategories removed to avoid hardcoded Portuguese labels
-    const defaultCategories = [];
 
     // DOM
     const newTargetInput = document.getElementById('newTargetInput');
@@ -192,6 +190,19 @@
     // helpers
     function id(){ return 'id_' + Math.random().toString(36).slice(2,9); }
     function formatDate(ts){ const d=new Date(ts); return d.toLocaleString(); }
+    // compute total notes for a categories object (used in multiple places)
+    function computeNoteCount(categories){
+        if (!categories || typeof categories !== 'object') return 0;
+        return Object.values(categories).reduce((s,a)=>{
+            if (Array.isArray(a)) return s + a.length;
+            if (a && typeof a === 'object'){
+                let subSum = (a._notes? a._notes.length : 0);
+                if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
+                return s + subSum;
+            }
+            return s;
+        },0);
+    }
     // language
     const LANG_KEY = 'bb_lang';
     const langs = {
@@ -874,16 +885,8 @@
                 data.targets[selectedTarget].categories[selectedCategory] = [note];
             }
         }
-        // recalc noteCount
-        data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
-            if (Array.isArray(a)) return s + a.length;
-            if (a && typeof a === 'object'){
-                let subSum = (a._notes? a._notes.length : 0);
-                if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
-                return s + subSum;
-            }
-            return s;
-        },0);
+        // recalc noteCount (using helper)
+        data.targets[selectedTarget].noteCount = computeNoteCount(data.targets[selectedTarget].categories);
         save();
         try{ localStorage.removeItem(DRAFT_KEY); setSaveStatus(''); }catch(e){}
         noteContent.value=''; renderNotes(); renderTargets();
@@ -908,16 +911,8 @@
         if (!catNotes) return;
         const idx = catNotes.findIndex(n=>n.id===id);
         if (idx>=0){ catNotes.splice(idx,1);
-            // recalc noteCount
-            data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
-                if (Array.isArray(a)) return s + a.length;
-                if (a && typeof a === 'object'){
-                    let subSum = (a._notes? a._notes.length : 0);
-                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
-                    return s + subSum;
-                }
-                return s;
-            },0);
+            // recalc noteCount (using helper)
+            data.targets[selectedTarget].noteCount = computeNoteCount(data.targets[selectedTarget].categories);
             save(); renderNotes(); renderTargets(); }
     }
 
@@ -948,10 +943,7 @@
         return null;
     }
 
-    function addSubcategoryPrompt(cat){
-        // Prompt-based add removed. Use the in-page "Sub +" button below the category to add subcategories.
-        showToast('Use the Sub + button below the category to add a subcategory');
-    }
+    // Prompt-based add removed in favor of inline Sub + input (see showInlineSubInput)
 
     function createSubcategory(cat, name){
         if (!selectedTarget) return;
@@ -998,21 +990,13 @@
             if (!cur || typeof cur !== 'object' || !cur.sub) return;
             delete cur.sub[sub];
             if (selectedSubcategory===sub) selectedSubcategory=null;
-            // recalc noteCount
-            data.targets[selectedTarget].noteCount = Object.values(data.targets[selectedTarget].categories).reduce((s,a)=>{
-                if (Array.isArray(a)) return s + a.length;
-                if (a && typeof a === 'object'){
-                    let subSum = (a._notes? a._notes.length : 0);
-                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
-                    return s + subSum;
-                }
-                return s;
-            },0);
+            // recalc noteCount (using helper)
+            data.targets[selectedTarget].noteCount = computeNoteCount(data.targets[selectedTarget].categories);
             save(); renderTargetDetails(); renderTargets();
         }, ()=>{});
     }
 
-    function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    // escapeHtml removed (unused) — HTML escaping is handled via DOMPurify
 
     function exportData(){
         try{
@@ -1172,16 +1156,8 @@
                     if (srcVal.sub){ Object.keys(srcVal.sub).forEach(s=>{ dstVal.sub[s] = (dstVal.sub[s]||[]).concat(srcVal.sub[s]||[]); }); }
                 }
             });
-            // recalc noteCount
-            dst.noteCount = Object.values(dst.categories).reduce((s,a)=>{
-                if (Array.isArray(a)) return s + a.length;
-                if (a && typeof a === 'object'){
-                    let subSum = (a._notes? a._notes.length : 0);
-                    if (a.sub) subSum += Object.values(a.sub).reduce((ss,arr)=> ss + (Array.isArray(arr)?arr.length:0),0);
-                    return s + subSum;
-                }
-                return s;
-            },0);
+            // recalc noteCount for imported target (using helper)
+            dst.noteCount = computeNoteCount(dst.categories);
         });
     }
 
