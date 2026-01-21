@@ -31,6 +31,8 @@
     .subcat{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.01);cursor:pointer;font-size:12px;color:var(--muted);border:1px solid rgba(255,255,255,0.02)}
     .subcat.active{background:rgba(6,182,212,0.06);color:var(--accent);border:1px solid rgba(6,182,212,0.12)}
     .notes-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+    .qq-string{color:#f6c177}
+    .notes-list a{color:var(--accent)}
     .note{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;color:#ffffff;font-size:16px}
     .note-title{font-weight:600}
     .note-meta{font-size:16px;color:#ffffff;margin-top:6px}
@@ -137,7 +139,9 @@
 
         <footer class="card"></footer>
     </main>
-</div>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+<!-- highlight.js removed to avoid environment issues; highlighting will run only if hljs is available globally -->
 
 <script>
 (function(){
@@ -417,20 +421,72 @@
     let autosaveTimer = null;
     function setSaveStatus(text){ const el = document.getElementById('saveStatus'); if (el) el.textContent = text || ''; }
     function saveDraft(){ try{
-            if (!selectedTarget || !selectedCategory || !noteContent) { localStorage.removeItem(DRAFT_KEY); setSaveStatus(''); return; }
-            const draft = { target: selectedTarget, category: selectedCategory, sub: selectedSubcategory, content: noteContent.value || '', ts: Date.now() };
-            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-            setSaveStatus(Lkey('saved'));
-        }catch(e){ console.error(e); }
-    }
+        if (!selectedTarget || !selectedCategory || !noteContent) { localStorage.removeItem(DRAFT_KEY); setSaveStatus(''); return; }
+        const draft = { target: selectedTarget, category: selectedCategory, sub: selectedSubcategory, content: noteContent.value || '', ts: Date.now() };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+        setSaveStatus(Lkey('saved'));
+    }catch(e){ console.error(e); } }
+
     function scheduleDraftSave(){ clearTimeout(autosaveTimer); setSaveStatus(Lkey('unsaved')); autosaveTimer = setTimeout(()=>{ saveDraft(); }, 900); }
+
     function loadDraftIfExists(){ try{
-            const raw = localStorage.getItem(DRAFT_KEY);
-            if (!raw) return;
-            const d = JSON.parse(raw);
-            if (!d || !d.target) return;
-            if (d.target === selectedTarget && d.category === selectedCategory){ if (noteContent && !noteContent.value){ noteContent.value = d.content || ''; setSaveStatus(Lkey('draftRestored')); showToast(Lkey('draftRestored')); } }
-        }catch(e){ console.error(e); }
+        const raw = localStorage.getItem(DRAFT_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        if (!d || !d.target) return;
+        if (d.target === selectedTarget && d.category === selectedCategory){ if (noteContent && !noteContent.value){ noteContent.value = d.content || ''; setSaveStatus(''); } }
+    }catch(e){ console.error(e); } }
+
+    // configure marked (if present)
+    try{ if (window.marked){ marked.setOptions({ gfm:true, breaks:true, smartLists:true, smartypants:false, headerIds:false }); } }catch(e){}
+
+    // convert bare URLs into autolink-safe form: wrap in <> when needed
+    function preprocessUrls(text){
+        if (!text) return '';
+        try{
+            return text.replace(/(^|\s)((https?:\/\/|www\.)[^\s<]+)/g, (m,p1,p2)=>{ let url = p2; if (!/^https?:\/\//i.test(url)) url = 'http://' + url; return p1 + '<' + url + '>'; });
+        }catch(e){ return text; }
+    }
+
+    // wrap quoted strings ("..." or '...') in spans with class for highlighting
+    function wrapQuotedStringsInDOM(root){
+        if (!root) return;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        const textNodes = [];
+        while(walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach(tn=>{
+            const s = tn.nodeValue;
+            if (!s) return;
+            const parts = s.split(/(("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*'))/g);
+            if (parts.length === 1) return;
+            const parent = tn.parentNode;
+            parts.forEach(p=>{
+                if (!p) return;
+                if (/^("[^"\\]*(?:\\.[^"\\]*)*"|'[^'\\]*(?:\\.[^'\\]*)*')$/.test(p)){
+                    const span = document.createElement('span'); span.className='qq-string'; span.textContent = p; parent.insertBefore(span, tn);
+                } else {
+                    parent.insertBefore(document.createTextNode(p), tn);
+                }
+            });
+            parent.removeChild(tn);
+        });
+    }
+
+    function renderNoteMarkdown(raw){
+        try{
+            const pre = preprocessUrls(raw || '');
+            const md = (window.marked ? marked.parse(pre) : (pre.replace(/</g,'&lt;').replace(/>/g,'&gt;')));
+            const clean = (window.DOMPurify ? DOMPurify.sanitize(md, {USE_PROFILES: {html: true}}) : md);
+            // parse into DOM to wrap quoted strings and set anchors
+            const parser = new DOMParser();
+            const doc = parser.parseFromString('<div>' + clean + '</div>','text/html');
+            const root = doc.body.firstChild;
+            // wrap quoted strings in text nodes
+            wrapQuotedStringsInDOM(root);
+            // ensure links open in new tab and are safe
+            root.querySelectorAll('a').forEach(a=>{ try{ a.setAttribute('target','_blank'); a.setAttribute('rel','noopener noreferrer'); }catch(e){} });
+            return root.innerHTML;
+        }catch(e){ return (raw||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     }
 
     // render
@@ -652,7 +708,11 @@
             metaEl.className = 'note-meta';
             metaEl.style.fontSize = '16px';
             metaEl.style.lineHeight = '1.4';
-            metaEl.textContent = (note.content || '').substring(0,200).replace(/\n/g,' ');
+            // render markdown/HTML safely and highlight quoted strings
+            try{
+                const rendered = renderNoteMarkdown(note.content || '');
+                metaEl.innerHTML = rendered.substring(0,1000); // truncate very long notes visually
+            }catch(e){ metaEl.textContent = (note.content || '').substring(0,200).replace(/\n/g,' '); }
 
             const dateEl = document.createElement('div');
             dateEl.style.color = 'var(--muted)';
@@ -824,7 +884,9 @@
             }
             return s;
         },0);
-        save(); noteContent.value=''; renderNotes(); renderTargets();
+        save();
+        try{ localStorage.removeItem(DRAFT_KEY); setSaveStatus(''); }catch(e){}
+        noteContent.value=''; renderNotes(); renderTargets();
     }
 
     function clearNote(){
@@ -953,12 +1015,14 @@
     function escapeHtml(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
     function exportData(){
-        const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = 'bb_anotacoes_export.json';
-        document.body.appendChild(a); a.click(); a.remove();
-        URL.revokeObjectURL(url);
+        try{
+            const name = window.prompt('Nome do arquivo de exportação:', 'bb_anotacoes_export.json');
+            if (!name) return;
+            const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+            showToast('Arquivo preparado para download: ' + name);
+        }catch(e){ showToast('Erro ao exportar: '+(e && e.message), {error:true}); }
     }
 
     // events
@@ -985,6 +1049,7 @@
         noteContent.addEventListener('blur', saveDraft);
         noteContent.addEventListener('keydown', (e)=>{ if ((e.ctrlKey||e.metaKey) && e.key === 'Enter'){ e.preventDefault(); addNote(); } });
     }
+    // preview removed per user request
     // language selector (flag button + popover menu)
     const langBtn = document.getElementById('langBtn');
     const langMenu = document.getElementById('langMenu');
